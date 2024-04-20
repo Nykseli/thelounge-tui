@@ -1,61 +1,84 @@
-use rust_socketio::{ClientBuilder, Payload};
-use serde_json::json;
+use events::IrcEvents;
+use std::io;
+use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
+use std::{thread, time};
 
+mod events;
 mod types;
 
+fn spawn_stdin_channel() -> Receiver<String> {
+    let (tx, rx) = mpsc::channel::<String>();
+    thread::spawn(move || loop {
+        let mut buffer = String::new();
+        io::stdin().read_line(&mut buffer).unwrap();
+        tx.send(buffer).unwrap();
+    });
+    rx
+}
+
+fn sleep(millis: u64) {
+    let duration = time::Duration::from_millis(millis);
+    thread::sleep(duration);
+}
+
 fn main() {
-    // get a socket that is connected to the admin namespace
-    let socket = ClientBuilder::new("http://127.0.0.1:9000")
-        .namespace("/")
-        // .transport_type(rust_socketio::TransportType::Any)
-        .on("init", |data, _| {
-            if let Payload::Text(mut data) = data {
-                assert!(data.len() == 1);
+    let mut events = IrcEvents::new();
 
-                // this is stupid, I hate it but I don't know how to get the data ownedship otherwise
-                let init: types::Init = serde_json::from_value(data.swap_remove(0)).unwrap();
+    let stdin_channel = spawn_stdin_channel();
+    loop {
+        if let Ok(key) = stdin_channel.try_recv() {
+            println!("Received: {}", key);
+            events.disconnect();
+            break;
+        }
 
-                for network in init.networks {
-                    println!("In network: {}", network.name);
-                    for channel in network.channels {
-                        if channel.type_ == "Lobby" {
-                            println!("  In lobby: ");
-                        } else {
-                            println!("  In channel: {}", channel.name);
-                        }
-                        for message in channel.messages {
-                            if let (Some(mode), Some(nick)) = (message.from.mode, message.from.nick)
-                            {
-                                print!("    {mode}{nick}");
+        if let Some(event) = events.event() {
+            match event {
+                events::Event::Init(init) => {
+                    for network in init.networks {
+                        println!("In network: {}", network.name);
+                        for channel in network.channels {
+                            if channel.type_ == "Lobby" {
+                                println!("  In lobby: ");
                             } else {
-                                print!("    ~system~");
+                                println!("  In channel: {}", channel.name);
                             }
+                            for message in channel.messages {
+                                if let (Some(mode), Some(nick)) =
+                                    (message.from.mode, message.from.nick)
+                                {
+                                    print!("    {mode}{nick}");
+                                } else {
+                                    print!("    ~system~");
+                                }
 
-                            if message.type_ != "message" {
-                                println!(": {}", message.type_)
-                            } else {
-                                println!(": {}", message.text)
+                                if message.type_ != "message" {
+                                    println!(": {}", message.type_)
+                                } else {
+                                    println!(": {}", message.text)
+                                }
                             }
                         }
                     }
                 }
+                events::Event::Msg(msg) => {
+                    let message = msg.msg;
+                    if let (Some(mode), Some(nick)) = (message.from.mode, message.from.nick) {
+                        print!("    {mode}{nick}");
+                    } else {
+                        print!("    ~system~");
+                    }
+
+                    if message.type_ != "message" {
+                        println!(": {}", message.type_)
+                    } else {
+                        println!(": {}", message.text)
+                    }
+                }
             }
-        })
-        .on("auth:start", |_, client| {
-            let auth = json!({"user":"duck","password":"duck"});
-            client
-                .emit("auth:perform", auth)
-                .expect("Server unreachable");
-        })
-        // .on("error", |err, _| panic!("{:#?}", err))
-        .on_any(|_event, _payload, _| {
-            // println!("{event:#?}");
-            // println!("{payload:#?}");
-        })
-        .connect()
-        .expect("Connection failed");
+        }
 
-    std::thread::sleep(std::time::Duration::from_secs(5));
-
-    socket.disconnect().expect("Disconnect failed")
+        sleep(33);
+    }
 }

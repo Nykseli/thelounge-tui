@@ -65,3 +65,9 @@ pub struct Init {
     pub networks: Vec<Network>,
     pub token: String,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Msg {
+    pub chan: u32,
+    pub msg: ChannelMessage,
+}
