@@ -29,6 +29,7 @@ pub struct ChannelMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NetworkChannel {
+    pub id: u32,
     #[serde(rename = "firstUnread")]
     pub first_unread: i32,
     pub highlight: i32,
