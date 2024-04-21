@@ -1,5 +1,5 @@
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
@@ -11,10 +11,41 @@ use ratatui::{
 };
 use std::io::{self, stdout};
 
-use self::{chat::ChatWidget, state::TuiState};
+use self::{chat::ChatWidget, input::InputWidget, state::TuiState};
 
 mod chat;
+mod input;
 mod state;
+
+struct TuiApp {
+    input_buffer: String,
+    state: TuiState,
+}
+
+impl TuiApp {
+    pub fn new() -> Self {
+        Self {
+            state: TuiState::new(),
+            input_buffer: String::new(),
+        }
+    }
+
+    fn key_event(&mut self, key: KeyEvent) {
+        if key.kind != event::KeyEventKind::Press {
+            return;
+        }
+
+        match key.code {
+            KeyCode::Char(c) => self.input_buffer.push(c),
+            // 2 is the test server #foobar channel
+            KeyCode::Enter => {
+                self.state.events().emit_input(&self.input_buffer, 2);
+                self.input_buffer.truncate(0);
+            }
+            _ => {}
+        }
+    }
+}
 
 pub fn run_tui() -> io::Result<()> {
     enable_raw_mode()?;
@@ -22,11 +53,11 @@ pub fn run_tui() -> io::Result<()> {
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     let mut should_quit = false;
-    let mut state = TuiState::new();
+    let mut app = TuiApp::new();
 
     while !should_quit {
-        terminal.draw(|frame| ui(frame, &state))?;
-        should_quit = handle_events(&mut state)?;
+        terminal.draw(|frame| ui(frame, &app))?;
+        should_quit = handle_events(&mut app)?;
     }
 
     disable_raw_mode()?;
@@ -34,16 +65,22 @@ pub fn run_tui() -> io::Result<()> {
 
     Ok(())
 }
-fn handle_events(state: &mut TuiState) -> io::Result<bool> {
+
+fn handle_events(app: &mut TuiApp) -> io::Result<bool> {
     if event::poll(std::time::Duration::from_millis(50))? {
         if let Event::Key(key) = event::read()? {
-            if key.kind == event::KeyEventKind::Press && key.code == KeyCode::Char('q') {
+            if key.kind == event::KeyEventKind::Press
+                && key.modifiers.contains(KeyModifiers::CONTROL)
+                && key.code == KeyCode::Char('q')
+            {
                 return Ok(true);
             }
+
+            app.key_event(key)
         }
     }
 
-    state.update();
+    app.state.update();
 
     Ok(false)
 }
@@ -56,7 +93,7 @@ fn tmp_area(name: &str) -> impl Widget {
     )
 }
 
-fn ui(frame: &mut Frame, state: &TuiState) {
+fn ui(frame: &mut Frame, app: &TuiApp) {
     let horizontal = Layout::horizontal([
         // Channel list
         Constraint::Percentage(10),
@@ -72,11 +109,11 @@ fn ui(frame: &mut Frame, state: &TuiState) {
     frame.render_widget(tmp_area("channels"), channels);
     frame.render_widget(tmp_area("members"), members);
     // 2 is the id of the test #foobar channel
-    if let Some(msgs) = state.messages(2) {
+    if let Some(msgs) = app.state.messages(2) {
         frame.render_widget(ChatWidget::ui("#foobar", msgs), messages);
     } else {
         frame.render_widget(tmp_area("messages"), messages);
     }
 
-    frame.render_widget(tmp_area("input"), input);
+    frame.render_widget(InputWidget::ui(&app.input_buffer), input);
 }

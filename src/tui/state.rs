@@ -6,9 +6,6 @@ use crate::{
 pub struct TuiState {
     networks: Vec<Network>,
     events: IrcEvents,
-    pub init: bool,
-    pub updates: u32,
-    pub evs: u32,
 }
 
 impl TuiState {
@@ -16,10 +13,11 @@ impl TuiState {
         Self {
             networks: Vec::new(),
             events: IrcEvents::new(),
-            init: false,
-            updates: 0,
-            evs: 0,
         }
+    }
+
+    pub fn events(&self) -> &IrcEvents {
+        &self.events
     }
 
     pub fn messages(&self, channel: u32) -> Option<&[ChannelMessage]> {
@@ -35,9 +33,7 @@ impl TuiState {
 
     /// Check for new events and update state accordingly
     pub fn update(&mut self) {
-        self.updates += 1;
         let event = if let Some(event) = self.events.event() {
-            self.evs += 1;
             event
         } else {
             return;
@@ -51,7 +47,6 @@ impl TuiState {
 
     fn on_init(&mut self, init: Init) {
         self.networks = init.networks;
-        self.init = true;
     }
 
     fn on_msg(&mut self, msg: Msg) {

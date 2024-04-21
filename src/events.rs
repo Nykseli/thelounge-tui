@@ -32,6 +32,17 @@ impl IrcEvents {
     pub fn event(&mut self) -> Option<Event> {
         self.events.lock().expect("Poisoned lock").pop_front()
     }
+
+    /// Send input to to target channel ID
+    pub fn emit_input(&self, input: &str, target: u32) {
+        if input.is_empty() {
+            return;
+        }
+
+        let input = json!({"text": input, "target": target});
+        // TODO: error handling
+        self.client.emit("input", input).unwrap();
+    }
 }
 
 fn add_event(events: Arc<Mutex<VecDeque<Event>>>, event: Event) {
