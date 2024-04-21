@@ -20,6 +20,10 @@ impl TuiState {
         &self.events
     }
 
+    pub fn networks(&self) -> &[Network] {
+        &self.networks
+    }
+
     pub fn messages(&self, channel: u32) -> Option<&[ChannelMessage]> {
         for network in &self.networks {
             for chan in &network.channels {
