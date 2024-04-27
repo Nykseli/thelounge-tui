@@ -168,24 +168,14 @@ impl TuiState {
     }
 
     fn on_msg(&mut self, msg: Msg) {
-        'outer: for network in &mut self.networks {
-            for channel in &mut network.channels {
-                if channel.id == msg.chan {
-                    channel.messages.push(msg.msg);
-                    break 'outer;
-                }
-            }
+        if let Some(channel) = self.channel_mut(self.active) {
+            channel.messages.push(msg.msg);
         }
     }
 
     fn on_more(&mut self, more: More) {
-        'outer: for network in &mut self.networks {
-            for channel in &mut network.channels {
-                if channel.id == more.chan {
-                    channel.messages.splice(..0, more.messages);
-                    break 'outer;
-                }
-            }
+        if let Some(channel) = self.channel_mut(self.active) {
+            channel.messages.splice(..0, more.messages);
         }
     }
 }
