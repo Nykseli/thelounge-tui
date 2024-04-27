@@ -59,6 +59,17 @@ impl TuiState {
         None
     }
 
+    fn channel_mut(&mut self, channel: u32) -> Option<&mut NetworkChannel> {
+        for network in &mut self.networks {
+            for chan in &mut network.channels {
+                if chan.id == channel {
+                    return Some(chan);
+                }
+            }
+        }
+        None
+    }
+
     fn update_active(&mut self) {
         let channel = &mut self.networks[self.network_idx].channels[self.channel_idx];
         self.active = channel.id;
@@ -145,6 +156,9 @@ impl TuiState {
     fn on_init(&mut self, init: Init) {
         self.active = init.active;
         self.networks = init.networks;
+        if let Some(channel) = self.channel_mut(self.active) {
+            channel.loaded = true;
+        }
 
         self.set_selected();
     }
