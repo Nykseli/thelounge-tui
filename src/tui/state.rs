@@ -1,10 +1,14 @@
 use crate::{
     events::{Event, IrcEvents},
-    types::{ChannelMessage, Init, Msg, Network},
+    types::{Init, Msg, Names, Network, NetworkChannel},
 };
 
 pub struct TuiState {
+    /// All available networks
     networks: Vec<Network>,
+    /// Users in currently active network
+    names: Option<Names>,
+    /// List of events
     events: IrcEvents,
 }
 
@@ -13,6 +17,7 @@ impl TuiState {
         Self {
             networks: Vec::new(),
             events: IrcEvents::new(),
+            names: None,
         }
     }
 
@@ -20,15 +25,19 @@ impl TuiState {
         &self.events
     }
 
+    pub fn names(&self) -> &Option<Names> {
+        &self.names
+    }
+
     pub fn networks(&self) -> &[Network] {
         &self.networks
     }
 
-    pub fn messages(&self, channel: u32) -> Option<&[ChannelMessage]> {
+    pub fn channel(&self, channel: u32) -> Option<&NetworkChannel> {
         for network in &self.networks {
             for chan in &network.channels {
                 if chan.id == channel {
-                    return Some(&chan.messages);
+                    return Some(chan);
                 }
             }
         }
@@ -46,11 +55,16 @@ impl TuiState {
         match event {
             Event::Init(init) => self.on_init(init),
             Event::Msg(msg) => self.on_msg(msg),
+            Event::Names(names) => self.on_names(names),
         }
     }
 
     fn on_init(&mut self, init: Init) {
         self.networks = init.networks;
+    }
+
+    fn on_names(&mut self, names: Names) {
+        self.names = Some(names)
     }
 
     fn on_msg(&mut self, msg: Msg) {

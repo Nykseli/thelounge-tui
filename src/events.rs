@@ -10,6 +10,7 @@ use crate::types;
 pub enum Event {
     Init(types::Init),
     Msg(types::Msg),
+    Names(types::Names),
 }
 
 pub struct IrcEvents {
@@ -55,13 +56,26 @@ fn create_connection(events: Arc<Mutex<VecDeque<Event>>>) -> Client {
         ClientBuilder::new("http://127.0.0.1:9000")
             .namespace("/")
             // .transport_type(rust_socketio::TransportType::Any)
-            .on("init", move |data, _| {
+            .on("init", move |data, client| {
                 if let Payload::Text(mut data) = data {
                     assert!(data.len() == 1);
 
                     // this is stupid, I hate it but I don't know how to get the data ownedship otherwise
                     let init: types::Init = serde_json::from_value(data.swap_remove(0)).unwrap();
+                    let active_channel = init.active;
+                    let type_ = init.active_channel().unwrap().type_.clone();
                     add_event(events.clone(), Event::Init(init));
+
+                    // TODO: handle the open even from server
+                    client
+                        .emit("open", active_channel.to_string())
+                        .expect("Server unreachable");
+
+                    if type_ == "channel" {
+                        client
+                            .emit("names", json!({"target": active_channel}))
+                            .expect("Server unreachable");
+                    }
                 }
             })
             .on("auth:start", |_, client| {
@@ -70,6 +84,19 @@ fn create_connection(events: Arc<Mutex<VecDeque<Event>>>) -> Client {
                     .emit("auth:perform", auth)
                     .expect("Server unreachable");
             })
+    };
+
+    let client = {
+        let events = events.clone();
+        client.on("names", move |data, _| {
+            if let Payload::Text(mut data) = data {
+                assert!(data.len() == 1);
+
+                // this is stupid, I hate it but I don't know how to get the data ownedship otherwise
+                let names: types::Names = serde_json::from_value(data.swap_remove(0)).unwrap();
+                add_event(events.clone(), Event::Names(names))
+            }
+        })
     };
 
     let events = events.clone();

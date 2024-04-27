@@ -1,5 +1,20 @@
 use serde::{Deserialize, Serialize};
 
+/// Name is similar to User execpt with more detailed information
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Name {
+    pub nick: String,
+    pub modes: Vec<String>,
+    #[serde(rename = "lastMessage")]
+    pub last_message: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Names {
+    pub id: u32,
+    pub users: Vec<Name>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     // TODO: map mode into serverOptions->prefix
@@ -44,8 +59,8 @@ pub struct NetworkChannel {
     #[serde(rename = "type")]
     pub type_: String,
     pub unread: i32,
-    // TODO: users list
     pub messages: Vec<ChannelMessage>,
+    pub users: Vec<User>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,11 +75,30 @@ pub struct Network {
     pub uuid: String,
 }
 
+impl Network {
+    pub fn channel(&self, id: u32) -> Option<&NetworkChannel> {
+        self.channels.iter().find(|c| c.id == id)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Init {
-    pub active: i32,
+    pub active: u32,
     pub networks: Vec<Network>,
     pub token: String,
+}
+
+impl Init {
+    pub fn active_channel(&self) -> Option<&NetworkChannel> {
+        for network in &self.networks {
+            let channel = network.channel(self.active);
+            if channel.is_some() {
+                return channel;
+            }
+        }
+
+        None
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -11,12 +11,16 @@ use ratatui::{
 };
 use std::io::{self, stdout};
 
-use self::{channels::ChannelsWidget, chat::ChatWidget, input::InputWidget, state::TuiState};
+use self::{
+    channels::ChannelsWidget, chat::ChatWidget, input::InputWidget, state::TuiState,
+    users::UsersWidget,
+};
 
 mod channels;
 mod chat;
 mod input;
 mod state;
+mod users;
 
 struct TuiApp {
     input_buffer: String,
@@ -108,12 +112,17 @@ fn ui(frame: &mut Frame, app: &TuiApp) {
     let [messages, input] = vertical.areas(chat);
 
     frame.render_widget(ChannelsWidget::ui(app.state.networks()), channels);
-    frame.render_widget(tmp_area("members"), members);
     // 2 is the id of the test #foobar channel
-    if let Some(msgs) = app.state.messages(2) {
-        frame.render_widget(ChatWidget::ui("#foobar", msgs), messages);
+    if let Some(channel) = app.state.channel(2) {
+        frame.render_widget(ChatWidget::ui(&channel.name, &channel.messages), messages);
     } else {
         frame.render_widget(tmp_area("messages"), messages);
+    }
+
+    if let Some(names) = app.state.names() {
+        frame.render_widget(UsersWidget::ui(&names.users), members);
+    } else {
+        frame.render_widget(tmp_area("members"), members);
     }
 
     frame.render_widget(InputWidget::ui(&app.input_buffer), input);
