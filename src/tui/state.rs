@@ -168,13 +168,13 @@ impl TuiState {
     }
 
     fn on_msg(&mut self, msg: Msg) {
-        if let Some(channel) = self.channel_mut(self.active) {
+        if let Some(channel) = self.channel_mut(msg.chan) {
             channel.messages.push(msg.msg);
         }
     }
 
     fn on_more(&mut self, more: More) {
-        if let Some(channel) = self.channel_mut(self.active) {
+        if let Some(channel) = self.channel_mut(more.chan) {
             channel.messages.splice(..0, more.messages);
         }
     }
