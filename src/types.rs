@@ -6,12 +6,12 @@ pub struct Name {
     pub nick: String,
     pub modes: Vec<String>,
     #[serde(rename = "lastMessage")]
-    pub last_message: u32,
+    pub last_message: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Names {
-    pub id: u32,
+    pub id: u64,
     pub users: Vec<Name>,
 }
 
@@ -61,6 +61,8 @@ pub struct NetworkChannel {
     pub unread: i32,
     pub messages: Vec<ChannelMessage>,
     pub users: Vec<User>,
+    #[serde(default)]
+    pub loaded: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -105,4 +107,10 @@ impl Init {
 pub struct Msg {
     pub chan: u32,
     pub msg: ChannelMessage,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct More {
+    pub chan: u32,
+    pub messages: Vec<ChannelMessage>,
 }

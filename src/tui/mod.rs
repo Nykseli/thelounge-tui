@@ -40,14 +40,23 @@ impl TuiApp {
             return;
         }
 
-        match key.code {
-            KeyCode::Char(c) => self.input_buffer.push(c),
-            // 2 is the test server #foobar channel
-            KeyCode::Enter => {
-                self.state.events().emit_input(&self.input_buffer, 2);
-                self.input_buffer.truncate(0);
+        if key.modifiers.contains(KeyModifiers::ALT) {
+            match key.code {
+                KeyCode::Up => self.state.prev_channel(),
+                KeyCode::Down => self.state.next_channel(),
+                _ => {}
             }
-            _ => {}
+        } else {
+            match key.code {
+                KeyCode::Char(c) => self.input_buffer.push(c),
+                KeyCode::Enter => {
+                    self.state
+                        .events()
+                        .emit_input(&self.input_buffer, self.state.active());
+                    self.input_buffer.truncate(0);
+                }
+                _ => {}
+            }
         }
     }
 }
@@ -111,9 +120,12 @@ fn ui(frame: &mut Frame, app: &TuiApp) {
     let [channels, chat, members] = horizontal.areas(frame.size());
     let [messages, input] = vertical.areas(chat);
 
-    frame.render_widget(ChannelsWidget::ui(app.state.networks()), channels);
-    // 2 is the id of the test #foobar channel
-    if let Some(channel) = app.state.channel(2) {
+    frame.render_widget(
+        ChannelsWidget::ui(app.state.networks(), app.state.active()),
+        channels,
+    );
+
+    if let Some(channel) = app.state.channel(app.state.active()) {
         frame.render_widget(ChatWidget::ui(&channel.name, &channel.messages), messages);
     } else {
         frame.render_widget(tmp_area("messages"), messages);

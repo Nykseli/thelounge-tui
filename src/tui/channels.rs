@@ -1,6 +1,6 @@
 use crate::types::Network;
 use ratatui::{
-    style::{Modifier, Style},
+    style::{Modifier, Style, Stylize},
     text::Span,
     widgets::{Block, Borders, List, ListItem},
 };
@@ -8,19 +8,27 @@ use ratatui::{
 pub struct ChannelsWidget {}
 
 impl ChannelsWidget {
-    pub fn ui(networks: &[Network]) -> List<'_> {
+    pub fn ui(networks: &[Network], active: u32) -> List<'_> {
         let mut channels: Vec<ListItem> = Vec::new();
 
         for network in networks {
-            channels.push(
-                ListItem::new(Span::raw(&network.name))
-                    .style(Style::default().add_modifier(Modifier::BOLD)),
-            );
-
             for channel in &network.channels {
-                if channel.name != network.name {
-                    channels.push(ListItem::new(Span::raw(format!("  {}", channel.name))));
-                }
+                let (text, style) = if channel.type_ == "lobby" {
+                    (
+                        channel.name.clone(),
+                        Style::default().add_modifier(Modifier::BOLD),
+                    )
+                } else {
+                    (format!("  {}", channel.name), Style::default())
+                };
+
+                let style = if channel.id == active {
+                    style.reversed()
+                } else {
+                    style
+                };
+
+                channels.push(ListItem::new(Span::raw(text)).style(style));
             }
 
             // empty line to separate channels from eachother

@@ -10,6 +10,7 @@ use crate::types;
 pub enum Event {
     Init(types::Init),
     Msg(types::Msg),
+    More(types::More),
     Names(types::Names),
 }
 
@@ -43,6 +44,14 @@ impl IrcEvents {
         let input = json!({"text": input, "target": target});
         // TODO: error handling
         self.client.emit("input", input).unwrap();
+    }
+
+    pub fn emit<E, D>(&self, event: E, data: D)
+    where
+        E: Into<rust_socketio::Event>,
+        D: Into<Payload>,
+    {
+        self.client.emit(event, data).expect("Unreachable network")
     }
 }
 
@@ -95,6 +104,19 @@ fn create_connection(events: Arc<Mutex<VecDeque<Event>>>) -> Client {
                 // this is stupid, I hate it but I don't know how to get the data ownedship otherwise
                 let names: types::Names = serde_json::from_value(data.swap_remove(0)).unwrap();
                 add_event(events.clone(), Event::Names(names))
+            }
+        })
+    };
+
+    let client = {
+        let events = events.clone();
+        client.on("more", move |data, _| {
+            if let Payload::Text(mut data) = data {
+                assert!(data.len() == 1);
+
+                // this is stupid, I hate it but I don't know how to get the data ownedship otherwise
+                let more: types::More = serde_json::from_value(data.swap_remove(0)).unwrap();
+                add_event(events.clone(), Event::More(more))
             }
         })
     };
