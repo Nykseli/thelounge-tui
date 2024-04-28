@@ -51,8 +51,7 @@ impl TuiApp {
                 KeyCode::Char(c) => self.input_buffer.push(c),
                 KeyCode::Enter => {
                     self.state
-                        .events()
-                        .emit_input(&self.input_buffer, self.state.active());
+                        .handle_input(&self.input_buffer, self.state.active());
                     self.input_buffer.truncate(0);
                 }
                 _ => {}

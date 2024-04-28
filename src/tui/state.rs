@@ -29,10 +29,6 @@ impl TuiState {
         }
     }
 
-    pub fn events(&self) -> &IrcEvents {
-        &self.events
-    }
-
     pub fn networks(&self) -> &[Network] {
         &self.networks
     }
@@ -50,6 +46,34 @@ impl TuiState {
             }
         }
         None
+    }
+
+    pub fn handle_input(&mut self, input: &str, target: u32) {
+        if !self.handle_commad(input) {
+            self.events.emit_input(input, target);
+        }
+    }
+
+    /// Check if input has a command that can be handled on the client side.
+    /// returns true if command is handled on the client side.
+    fn handle_commad(&mut self, input: &str) -> bool {
+        let inputs: Vec<&str> = input.split_whitespace().collect();
+        if inputs[0] == "/join" && inputs.len() >= 2 {
+            // check if we already are in the channel and jump into it
+            let name = inputs[1];
+            if let Some(channel) = self.networks[self.network_idx]
+                .channels
+                .iter()
+                .find(|c| c.name == name)
+            {
+                self.active = channel.id;
+                self.set_selected();
+                self.update_active();
+                return true;
+            }
+        }
+
+        false
     }
 
     fn channel_mut(&mut self, channel: u32) -> Option<&mut NetworkChannel> {
@@ -138,7 +162,7 @@ impl TuiState {
                 if self.active == channel.id {
                     break 'outer;
                 }
-                channel_idx += 0;
+                channel_idx += 1;
             }
             network_idx += 1;
         }
