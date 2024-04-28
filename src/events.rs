@@ -12,6 +12,7 @@ pub enum Event {
     Msg(types::Msg),
     More(types::More),
     Names(types::Names),
+    Join(types::Join),
 }
 
 pub struct IrcEvents {
@@ -93,6 +94,19 @@ fn create_connection(events: Arc<Mutex<VecDeque<Event>>>) -> Client {
                     .emit("auth:perform", auth)
                     .expect("Server unreachable");
             })
+    };
+
+    let client = {
+        let events = events.clone();
+        client.on("join", move |data, _| {
+            if let Payload::Text(mut data) = data {
+                assert!(data.len() == 1);
+
+                // this is stupid, I hate it but I don't know how to get the data ownedship otherwise
+                let join: types::Join = serde_json::from_value(data.swap_remove(0)).unwrap();
+                add_event(events.clone(), Event::Join(join))
+            }
+        })
     };
 
     let client = {

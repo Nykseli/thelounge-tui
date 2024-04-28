@@ -2,7 +2,7 @@ use serde_json::json;
 
 use crate::{
     events::{Event, IrcEvents},
-    types::{Init, More, Msg, Names, Network, NetworkChannel},
+    types::{Init, Join, More, Msg, Names, Network, NetworkChannel},
 };
 
 pub struct TuiState {
@@ -124,6 +124,7 @@ impl TuiState {
             Event::Msg(msg) => self.on_msg(msg),
             Event::More(more) => self.on_more(more),
             Event::Names(names) => self.on_names(names),
+            Event::Join(join) => self.on_join(join),
         }
     }
 
@@ -156,9 +157,23 @@ impl TuiState {
         self.set_selected();
     }
 
+    fn on_join(&mut self, join: Join) {
+        if let Some(network) = self.networks.iter_mut().find(|n| n.uuid == join.network) {
+            self.active = join.chan.id;
+
+            if join.index >= network.channels.len() {
+                network.channels.push(join.chan);
+            } else {
+                network.channels.insert(join.index, join.chan);
+            }
+        }
+
+        self.set_selected();
+    }
+
     fn on_names(&mut self, names: Names) {
         if let Some(channel) = self.channel_mut(names.id as u32) {
-            channel.users.extend(names.users.iter().map(From::from))
+            channel.users = names.users.iter().map(From::from).collect();
         }
     }
 

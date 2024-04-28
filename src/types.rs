@@ -125,3 +125,12 @@ pub struct More {
     pub chan: u32,
     pub messages: Vec<ChannelMessage>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Join {
+    /// Target network uuid
+    pub network: String,
+    /// Index in the network channels list
+    pub index: usize,
+    pub chan: NetworkChannel,
+}
