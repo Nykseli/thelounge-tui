@@ -8,8 +8,6 @@ use crate::{
 pub struct TuiState {
     /// All available networks
     networks: Vec<Network>,
-    /// Users in currently active network
-    names: Option<Names>,
     /// Id of currently active channel
     active: u32,
     /// index into networks list
@@ -25,7 +23,6 @@ impl TuiState {
         Self {
             networks: Vec::new(),
             events: IrcEvents::new(),
-            names: None,
             active: 0,
             network_idx: 0,
             channel_idx: 0,
@@ -34,10 +31,6 @@ impl TuiState {
 
     pub fn events(&self) -> &IrcEvents {
         &self.events
-    }
-
-    pub fn names(&self) -> &Option<Names> {
-        &self.names
     }
 
     pub fn networks(&self) -> &[Network] {
@@ -164,7 +157,9 @@ impl TuiState {
     }
 
     fn on_names(&mut self, names: Names) {
-        self.names = Some(names)
+        if let Some(channel) = self.channel_mut(names.id as u32) {
+            channel.users.extend(names.users.iter().map(From::from))
+        }
     }
 
     fn on_msg(&mut self, msg: Msg) {

@@ -127,13 +127,9 @@ fn ui(frame: &mut Frame, app: &TuiApp) {
 
     if let Some(channel) = app.state.channel(app.state.active()) {
         frame.render_widget(ChatWidget::ui(&channel.name, &channel.messages), messages);
+        frame.render_widget(UsersWidget::ui(&channel.users), members);
     } else {
         frame.render_widget(tmp_area("messages"), messages);
-    }
-
-    if let Some(names) = app.state.names() {
-        frame.render_widget(UsersWidget::ui(&names.users), members);
-    } else {
         frame.render_widget(tmp_area("members"), members);
     }
 

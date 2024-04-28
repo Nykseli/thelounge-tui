@@ -23,6 +23,17 @@ pub struct User {
     pub nick: Option<String>,
 }
 
+impl From<&Name> for User {
+    fn from(value: &Name) -> Self {
+        // TODO: pick the "highest" mode if multiple exists
+        let mode = value.modes.first().cloned();
+        Self {
+            mode,
+            nick: Some(value.nick.clone()),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChannelMessage {
     /// Who has sent the message
