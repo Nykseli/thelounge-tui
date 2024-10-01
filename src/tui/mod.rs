@@ -22,8 +22,51 @@ mod input;
 mod state;
 mod users;
 
+struct Buffer {
+    text: String,
+    pos: usize,
+}
+
+impl Buffer {
+    fn new() -> Self {
+        Self {
+            text: "".into(),
+            pos: 0,
+        }
+    }
+
+    fn clear(&mut self) {
+        self.text.truncate(0);
+        self.pos = 0;
+    }
+
+    fn add(&mut self, c: char) {
+        self.text.insert(self.pos, c);
+        self.pos += 1;
+    }
+
+    fn next(&mut self) {
+        if self.pos < self.text.chars().count() {
+            self.pos += 1;
+        }
+    }
+
+    fn prev(&mut self) {
+        if self.pos > 0 {
+            self.pos -= 1;
+        }
+    }
+
+    fn backspace(&mut self) {
+        if !self.text.is_empty() {
+            self.pos -= 1;
+            self.text.remove(self.pos);
+        }
+    }
+}
+
 struct TuiApp {
-    input_buffer: String,
+    input_buffer: Buffer,
     state: TuiState,
 }
 
@@ -31,7 +74,7 @@ impl TuiApp {
     pub fn new() -> Self {
         Self {
             state: TuiState::new(),
-            input_buffer: String::new(),
+            input_buffer: Buffer::new(),
         }
     }
 
@@ -48,11 +91,20 @@ impl TuiApp {
             }
         } else {
             match key.code {
-                KeyCode::Char(c) => self.input_buffer.push(c),
+                KeyCode::Char(c) => self.input_buffer.add(c),
+                KeyCode::Backspace => {
+                    self.input_buffer.backspace();
+                }
+                KeyCode::Left => {
+                    self.input_buffer.prev();
+                }
+                KeyCode::Right => {
+                    self.input_buffer.next();
+                }
                 KeyCode::Enter => {
                     self.state
-                        .handle_input(&self.input_buffer, self.state.active());
-                    self.input_buffer.truncate(0);
+                        .handle_input(&self.input_buffer.text, self.state.active());
+                    self.input_buffer.clear();
                 }
                 _ => {}
             }
@@ -132,5 +184,6 @@ fn ui(frame: &mut Frame, app: &TuiApp) {
         frame.render_widget(tmp_area("members"), members);
     }
 
-    frame.render_widget(InputWidget::ui(&app.input_buffer), input);
+    frame.render_widget(InputWidget::ui(&app.input_buffer.text), input);
+    frame.set_cursor(input.x + 1 + app.input_buffer.pos as u16, input.y + 1);
 }
