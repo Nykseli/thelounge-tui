@@ -68,6 +68,8 @@ impl Buffer {
 struct TuiApp {
     input_buffer: Buffer,
     state: TuiState,
+    show_users: bool,
+    show_channels: bool,
 }
 
 impl TuiApp {
@@ -75,6 +77,8 @@ impl TuiApp {
         Self {
             state: TuiState::new(),
             input_buffer: Buffer::new(),
+            show_users: false,
+            show_channels: false,
         }
     }
 
@@ -87,6 +91,8 @@ impl TuiApp {
             match key.code {
                 KeyCode::Up => self.state.prev_channel(),
                 KeyCode::Down => self.state.next_channel(),
+                KeyCode::Char('b') => self.show_channels = !self.show_channels,
+                KeyCode::Char('v') => self.show_users = !self.show_users,
                 _ => {}
             }
         } else {
@@ -159,26 +165,37 @@ fn tmp_area(name: &str) -> impl Widget {
 }
 
 fn ui(frame: &mut Frame, app: &TuiApp) {
+    let channelw = if app.show_channels { 10 } else { 0 };
+
+    let usersw = if app.show_users { 10 } else { 0 };
+
+    let chatw = 100 - channelw - usersw;
+
     let horizontal = Layout::horizontal([
         // Channel list
-        Constraint::Percentage(10),
+        Constraint::Percentage(channelw),
         // Chat
-        Constraint::Percentage(80),
+        Constraint::Percentage(chatw),
         // Channel members
-        Constraint::Percentage(10),
+        Constraint::Percentage(usersw),
     ]);
+
     let vertical = Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)]);
     let [channels, chat, members] = horizontal.areas(frame.size());
     let [messages, input] = vertical.areas(chat);
 
-    frame.render_widget(
-        ChannelsWidget::ui(app.state.networks(), app.state.active()),
-        channels,
-    );
+    if app.show_channels {
+        frame.render_widget(
+            ChannelsWidget::ui(app.state.networks(), app.state.active()),
+            channels,
+        );
+    }
 
     if let Some(channel) = app.state.channel(app.state.active()) {
         frame.render_widget(ChatWidget::ui(&channel.name, &channel.messages), messages);
-        frame.render_widget(UsersWidget::ui(&channel.users), members);
+        if app.show_users {
+            frame.render_widget(UsersWidget::ui(&channel.users), members);
+        }
     } else {
         frame.render_widget(tmp_area("messages"), messages);
         frame.render_widget(tmp_area("members"), members);
